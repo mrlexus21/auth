@@ -4,11 +4,11 @@ COPY . /github.com/mrlexus21/auth/source/
 WORKDIR /github.com/mrlexus21/auth/source/
 
 RUN go mod download
-RUN go build -o ./bin/auth_server cmd/server/main.go
+RUN go build -o ./bin/auth_server cmd/server/main.go -config-path prod.env
 
 FROM alpine:latest
 
 WORKDIR /root/
-COPY --from=builder /github.com/mrlexus21/auth/source/bin/auth_server .
+COPY --from=builder /github.com/mrlexus21/auth/source/bin/auth_server ./auth
 
-CMD ["./auth_server"]
+CMD ["./auth/auth_server"]

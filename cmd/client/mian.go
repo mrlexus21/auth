@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/fatih/color"
+	"github.com/mrlexus21/auth/internal/config"
 	user_v1 "github.com/mrlexus21/auth/pkg/user/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -10,13 +12,31 @@ import (
 	"time"
 )
 
+var configPath string
+
+func init() {
+	flag.StringVar(&configPath, "config-path", ".env", "path to config file")
+}
+
 const (
-	address = "localhost:50051"
-	userID  = 1
+	userID int64 = 1
 )
 
 func main() {
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	flag.Parse()
+
+	// Считываем переменные окружения
+	err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	grpcConfig, err := config.NewGRPCConfig()
+	if err != nil {
+		log.Fatalf("failed to get grpc config: %v", err)
+	}
+
+	conn, err := grpc.NewClient(grpcConfig.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to server: %v", err)
 	}
