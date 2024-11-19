@@ -4,6 +4,18 @@ volumes:
   postgres_volume_prod:
 
 services:
+  go-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: on-failure
+    env_file:
+      - "prod.env"
+    depends_on:
+      - pg
+#    networks:
+#      - "auth-net"
+
   pg:
     image: postgres:14-alpine3.17
     env_file:
@@ -12,6 +24,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_volume_prod:/var/lib/postgresql/data
+#    networks:
+#      - "auth-net"
 
   migrator:
     build:
@@ -19,4 +33,10 @@ services:
       dockerfile: migration_prod.Dockerfile
     restart: on-failure
     environment:
-     DB_HOST: pg
+      DB_HOST: pg
+#    networks:
+#      - "auth-net"
+
+#networks:
+#  auth-net:
+#    external: true

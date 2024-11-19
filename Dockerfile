@@ -9,6 +9,7 @@ RUN go build -o ./bin/auth_server cmd/server/main.go
 FROM alpine:latest
 
 WORKDIR /root/
-COPY --from=builder /github.com/mrlexus21/auth/source/bin/auth_server ./auth/
+COPY --from=builder /github.com/mrlexus21/auth/source/bin/auth_server .
+COPY --from=builder /github.com/mrlexus21/auth/source/prod.env .
 
-CMD ["./auth/auth_server", "-config-path", "prod.env"]
+CMD ["./auth_server", "-config-path", "prod.env"]
