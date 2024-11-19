@@ -4,17 +4,18 @@ volumes:
   postgres_volume_prod:
 
 services:
-  go-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: on-failure
+  goo:
+    image: ${AUTH_SERVER_IMAGE}
     env_file:
       - "prod.env"
+    ports:
+      - "${GRPC_PORT:-50052}:50052"
     depends_on:
       - pg
-#    networks:
-#      - "auth-net"
+      - migrator
+    restart: on-failure
+    networks:
+      - "auth-net"
 
   pg:
     image: postgres:14-alpine3.17
@@ -24,8 +25,8 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_volume_prod:/var/lib/postgresql/data
-#    networks:
-#      - "auth-net"
+    networks:
+      - "auth-net"
 
   migrator:
     build:
@@ -34,9 +35,9 @@ services:
     restart: on-failure
     environment:
       DB_HOST: pg
-#    networks:
-#      - "auth-net"
+    networks:
+      - "auth-net"
 
-#networks:
-#  auth-net:
-#    external: true
+networks:
+  auth-net:
+    external: true
