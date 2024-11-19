@@ -1,22 +1,22 @@
 version: '3'
 
 volumes:
-  postgres_volume:
+  postgres_volume_prod:
 
 services:
-  auth-pg:
+  pg:
     image: postgres:14-alpine3.17
     env_file:
-      - "local.env"
+      - "prod.env"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_volume:/var/lib/postgresql/data
+      - postgres_volume_prod:/var/lib/postgresql/data
 
-  auth-migrator:
+  migrator:
     build:
       context: .
-      dockerfile: migration.Dockerfile
+      dockerfile: migration_prod.Dockerfile
     restart: on-failure
     environment:
-     DB_HOST: auth-pg
+     DB_HOST: pg

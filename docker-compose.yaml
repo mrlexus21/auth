@@ -5,7 +5,7 @@ volumes:
   #postgres_volume_prod:
 
 services:
-  auth-pg:
+  pg:
     image: postgres:14-alpine3.17
     env_file:
       - ".env"
@@ -14,13 +14,13 @@ services:
     volumes:
       - postgres_volume:/var/lib/postgresql/data
 
-  auth-migrator:
+  migrator:
     build:
       context: .
       dockerfile: migration.Dockerfile
     restart: on-failure
     environment:
-     DB_HOST: auth-pg
+     DB_HOST: pg
 
   #pg-local:
   #  image: postgres:14-alpine3.17

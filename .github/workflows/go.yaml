@@ -29,18 +29,15 @@ jobs:
         run: |
           TAG_NAME=$(echo $GITHUB_SHA | head -c7)
           docker buildx create --use
-          docker buildx build --no-cache --push --tag $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME -f Dockerfile .
+          docker buildx build --no-cache --push --tag $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME -f Dockerfile ./auth/
 
   deploy-image:
     runs-on: ubuntu-latest
     needs: image-build-and-push
 
     steps:
-      - name: Login to Yandex Cloud Container Registry
-        id: login-cr
-        uses: yc-actions/yc-cr-login@v2
-        with:
-          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       - name: Copy docker-compose.prod.yaml and prod.env to remote server
         uses: appleboy/scp-action@v0.1.4
@@ -48,7 +45,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          source: "docker-compose.prod.yaml,prod.env"
+          source: "docker-compose.prod.yaml,prod.env,migration_prod.Dockerfile,migration_prod.sh,migrations"
           target: "/root/auth/"
 
       - name: Run Docker Compose on remote server
@@ -59,12 +56,15 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /root/auth/
-            docker-compose stop auth-pg
             
-            docker-compose stop auth-migrate
-                        
-            docker-compose --env-file prod.env -f docker-compose.prod.yaml up -d --build
+            docker compose -f docker-compose-test.yml down
+            docker compose --env-file prod.env -f docker-compose.prod.yaml up -d --build
 
+      - name: Login to Yandex Cloud Container Registry
+        id: login-cr
+        uses: yc-actions/yc-cr-login@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
       - name: Deploy to Selectel Cloud via SSH action
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -84,5 +84,4 @@ jobs:
             docker rm $CONTAINER_NAME
             
             # Run a new container from a new image
-            docker run -d -p 50051:50051 --name $CONTAINER_NAME -t $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME
-
+            docker run -d -p 50052:50052 --name $CONTAINER_NAME -t $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME
