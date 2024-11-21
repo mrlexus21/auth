@@ -29,7 +29,7 @@ jobs:
         run: |
           TAG_NAME=$(echo $GITHUB_SHA | head -c7)
           docker buildx create --use
-          docker buildx build --no-cache --push --tag $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME -f Dockerfile ./auth/
+          docker buildx build --no-cache --push --tag $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME -f Dockerfile .
 
   deploy-image:
     runs-on: ubuntu-latest
@@ -48,6 +48,26 @@ jobs:
           source: "docker-compose.prod.yaml,prod.env,migration_prod.Dockerfile,migration_prod.sh,migrations"
           target: "./auth/"
 
+      - name: Run Docker Compose on remote server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ./auth/
+            
+            NETWORK_NAME="auth-net"
+            if ! docker network inspect "$NETWORK_NAME" > /dev/null 2>&1; then
+            echo "Creating network $NETWORK_NAME"
+            docker network create --driver bridge --attachable "$NETWORK_NAME"
+            else
+            echo "Network $NETWORK_NAME already exists"
+            fi
+          
+            docker compose -f docker-compose.prod.yaml down                
+            docker compose --env-file prod.env -f docker-compose.prod.yaml up -d --build
+
       - name: Login to Yandex Cloud Container Registry
         id: login-cr
         uses: yc-actions/yc-cr-login@v2
@@ -60,31 +80,15 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
-          #password: ${{ secrets.SSH_PASSWORD }}
           envs: IMAGE_NAME,REGISTRY,GITHUB_SHA,CONTAINER_NAME
           script: |
             # Set up variables
             TAG_NAME=$(echo $GITHUB_SHA | head -c7)
                              
             # Stop running container
-            docker stop $CONTAINER_NAME
-            
+            docker stop $CONTAINER_NAME            
             # Remove old container
             docker rm $CONTAINER_NAME
-            
-            docker image pull $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME
-              
+                          
             # Run a new container from a new image
-            #docker run -d -p 50052:50052 --name $CONTAINER_NAME -t $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME
-
-      - name: Run Docker Compose on remote server
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-            host: ${{ secrets.SERVER_HOST }}
-            username: ${{ secrets.SSH_USERNAME }}
-            key: ${{ secrets.SSH_KEY }}
-            script: |
-                cd ./auth/
-                
-                docker compose -f docker-compose.prod.yaml down
-                AUTH_SERVER_IMAGE=$REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME docker compose --env-file prod.env -f docker-compose.prod.yaml up -d --build
+            docker run -d -p 50052:50052 --name $CONTAINER_NAME -t --network auth-net $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME

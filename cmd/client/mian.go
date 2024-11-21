@@ -18,16 +18,13 @@ func init() {
 	flag.StringVar(&configPath, "config-path", ".env", "path to config file")
 }
 
-const (
-	userID int64 = 1
-)
+const userID int64 = 1
 
 func main() {
 	flag.Parse()
 
 	// Считываем переменные окружения
-	err := config.Load(configPath)
-	if err != nil {
+	if err := config.Load(configPath); err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
@@ -57,5 +54,5 @@ func main() {
 		log.Fatalf("Failed to get user by id: %v", err)
 	}
 
-	log.Printf(color.RedString("User info:\n"), color.GreenString("%+v", r.String()))
+	log.Printf("User info:\n%s", color.GreenString("%+v", r.String()))
 }

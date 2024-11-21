@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create table user_ent (
+create table users (
     id serial primary key,
     name text not null,
     email text not null,
@@ -14,5 +14,5 @@ create table user_ent (
 
 -- +goose Down
 -- +goose StatementBegin
-drop table user_ent;
+drop table users;
 -- +goose StatementEnd

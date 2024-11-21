@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mrlexus21/auth/internal/config"
@@ -33,8 +34,7 @@ func main() {
 	ctx := context.Background()
 
 	// Считываем переменные окружения
-	err := config.Load(configPath)
-	if err != nil {
+	if err := config.Load(configPath); err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
@@ -66,43 +66,30 @@ func main() {
 
 	log.Printf("Server listening at %s", lis.Addr())
 
-	if err = s.Serve(lis); err != nil {
+	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
 }
 
 func (s *server) Get(ctx context.Context, req *user_v1.GetRequest) (*user_v1.GetResponse, error) {
-	/*log.Printf("Get user: %d", req.GetId())
-
-	return &user_v1.GetResponse{
-		Id:        req.GetId(),
-		Name:      gofakeit.Name(),
-		Email:     gofakeit.Email(),
-		Role:      user_v1.Roles_ADMIN,
-		CreatedAt: timestamppb.New(gofakeit.Date()),
-		UpdatedAt: timestamppb.New(gofakeit.Date()),
-	}, nil*/
-
-	builderSelectOne := sq.Select("id", "name", "email", "role", "created_at", "updated_at").
-		From("user_ent").
+	query, args, err := sq.Select("id", "name", "email", "role", "created_at", "updated_at").
+		From("users").
 		PlaceholderFormat(sq.Dollar).
 		Where(sq.Eq{"id": req.GetId()}).
-		Limit(1)
-
-	query, args, err := builderSelectOne.ToSql()
+		Limit(1).
+		ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		return nil, fmt.Errorf("failed to build query: %v", err)
 	}
 
 	var id int64
 	var name, email string
-	var role int
+	var role int32
 	var createdAt time.Time
 	var updatedAt sql.NullTime
 
-	err = s.pool.QueryRow(ctx, query, args...).Scan(&id, &name, &email, &role, &createdAt, &updatedAt)
-	if err != nil {
-		log.Fatalf("failed to select users: %v", err)
+	if err := s.pool.QueryRow(ctx, query, args...).Scan(&id, &name, &email, &role, &createdAt, &updatedAt); err != nil {
+		return nil, fmt.Errorf("failed to select user: %v", err)
 	}
 
 	log.Printf("id: %d, name: %s, email: %s, role: %d, created_at: %v, updated_at: %v\n", id, name, email, role, createdAt, updatedAt)
@@ -113,7 +100,7 @@ func (s *server) Get(ctx context.Context, req *user_v1.GetRequest) (*user_v1.Get
 	}
 
 	return &user_v1.GetResponse{
-		Id:        req.GetId(),
+		Id:        id,
 		Name:      name,
 		Email:     email,
 		Role:      user_v1.Roles(role),
@@ -123,31 +110,19 @@ func (s *server) Get(ctx context.Context, req *user_v1.GetRequest) (*user_v1.Get
 }
 
 func (s *server) Create(ctx context.Context, req *user_v1.CreateRequest) (*user_v1.CreateResponse, error) {
-	/*log.Printf("Create user: %v", req.String())
-
-	id, err := rand.Int(rand.Reader, big.NewInt(1<<63-1))
-	if err != nil {
-		log.Fatalf("Failed user id generate: %v", err)
-		return &user_v1.CreateResponse{
-			Id: 0,
-		}, nil
-	}*/
-
-	builderInsert := sq.Insert("user_ent").
+	query, args, err := sq.Insert("users").
 		PlaceholderFormat(sq.Dollar).
 		Columns("name", "email", "password", "password_confirm", "role").
 		Values(req.GetName(), req.GetEmail(), req.GetPassword(), req.GetPasswordConfirm(), req.GetRole()).
-		Suffix("RETURNING id")
-
-	query, args, err := builderInsert.ToSql()
+		Suffix("RETURNING id").
+		ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		return nil, fmt.Errorf("failed to build query: %v", err)
 	}
 
 	var userID int64
-	err = s.pool.QueryRow(ctx, query, args...).Scan(&userID)
-	if err != nil {
-		log.Fatalf("failed to insert user: %v", err)
+	if err := s.pool.QueryRow(ctx, query, args...).Scan(&userID); err != nil {
+		return nil, fmt.Errorf("failed to insert user: %v", err)
 	}
 
 	log.Printf("inserted user with id: %d", userID)
@@ -156,9 +131,7 @@ func (s *server) Create(ctx context.Context, req *user_v1.CreateRequest) (*user_
 }
 
 func (s *server) Update(ctx context.Context, req *user_v1.UpdateRequest) (*emptypb.Empty, error) {
-	//log.Printf("Update user: %v", req.String())
-
-	builderUpdate := sq.Update("user_ent").
+	builderUpdate := sq.Update("users").
 		PlaceholderFormat(sq.Dollar).
 		Set("updated_at", time.Now())
 
@@ -173,12 +146,12 @@ func (s *server) Update(ctx context.Context, req *user_v1.UpdateRequest) (*empty
 
 	query, args, err := builderUpdate.ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		return nil, fmt.Errorf("failed to build query: %v", err)
 	}
 
 	res, err := s.pool.Exec(ctx, query, args...)
 	if err != nil {
-		log.Fatalf("failed to update user: %v", err)
+		return nil, fmt.Errorf("failed to update user: %v", err)
 	}
 
 	log.Printf("updated %d rows", res.RowsAffected())
@@ -187,20 +160,17 @@ func (s *server) Update(ctx context.Context, req *user_v1.UpdateRequest) (*empty
 }
 
 func (s *server) Delete(ctx context.Context, req *user_v1.DeleteRequest) (*emptypb.Empty, error) {
-	//log.Printf("Delete user: %d", req.GetId())
-
-	builderSelect := sq.Delete("user_ent").
+	query, args, err := sq.Delete("users").
 		PlaceholderFormat(sq.Dollar).
-		Where(sq.Eq{"id": req.GetId()})
-
-	query, args, err := builderSelect.ToSql()
+		Where(sq.Eq{"id": req.GetId()}).
+		ToSql()
 	if err != nil {
-		log.Fatalf("failed to build query: %v", err)
+		return nil, fmt.Errorf("failed to build query: %v", err)
 	}
 
 	res, err := s.pool.Exec(ctx, query, args...)
 	if err != nil {
-		log.Fatalf("failed to deleted users: %v", err)
+		return nil, fmt.Errorf("failed to delete user: %v", err)
 	}
 
 	log.Printf("deleted %d rows", res.RowsAffected())
