@@ -1,15 +1,18 @@
+// Package main реализует клиентскую часть приложения для взаимодействия с сервером аутентификации.
+// Включает функции для отправки запросов и обработки ответов от сервера.
 package main
 
 import (
 	"context"
 	"flag"
+	"log"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/mrlexus21/auth/internal/config"
 	user_v1 "github.com/mrlexus21/auth/pkg/user/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"log"
-	"time"
 )
 
 var configPath string

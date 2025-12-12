@@ -1,12 +1,15 @@
+// Package main демонстрирует выполнение "сырых" SQL-запросов к базе данных PostgreSQL
+// без использования библиотек-конструкторов запросов.
 package main
 
 import (
 	"context"
 	"database/sql"
-	"github.com/brianvoe/gofakeit"
-	"github.com/jackc/pgx/v4"
 	"log"
 	"time"
+
+	"github.com/brianvoe/gofakeit"
+	"github.com/jackc/pgx/v4"
 )
 
 const (

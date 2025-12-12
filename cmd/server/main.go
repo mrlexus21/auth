@@ -1,3 +1,5 @@
+// Package main реализует серверную часть приложения аутентификации.
+// Обеспечивает обработку gRPC-запросов, управление подключением к базе данных и бизнес-логику аутентификации.
 package main
 
 import (
@@ -5,6 +7,10 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	"log"
+	"net"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/mrlexus21/auth/internal/config"
@@ -13,9 +19,6 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log"
-	"net"
-	"time"
 )
 
 var configPath string
