@@ -1,13 +1,16 @@
+// Package main содержит пример использования библиотеки Squirrel для построения SQL-запросов
+// и выполнения операций с базой данных PostgreSQL.
 package main
 
 import (
 	"context"
 	"database/sql"
+	"log"
+	"time"
+
 	sq "github.com/Masterminds/squirrel"
 	"github.com/brianvoe/gofakeit"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"log"
-	"time"
 )
 
 const (
