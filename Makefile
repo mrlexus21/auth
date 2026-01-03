@@ -52,3 +52,9 @@ local-migration-up:
 
 local-migration-down:
 	$(LOCAL_BIN)/goose -dir ${MIGRATION_DIR} postgres ${PG_DSN} down -v
+
+up:
+	docker compose up -d
+
+down:
+	docker compose down

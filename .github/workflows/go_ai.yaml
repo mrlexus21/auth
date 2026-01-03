@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: "cr.yandex"
+  CONTAINER_NAME: "auth-server-container"
+  IMAGE_NAME: "auth-server"
+
+jobs:
+  image-build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Yandex Cloud Container Registry
+        uses: yc-actions/yc-cr-login@v2
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+
+      - name: Build and Push Docker Image
+        run: |
+          TAG_NAME=${GITHUB_SHA::7}
+          docker buildx create --use
+          docker buildx build --push --tag $REGISTRY/${{ secrets.REGISTRY_ID }}/$IMAGE_NAME:$TAG_NAME -f Dockerfile .
+
+  deploy-image:
+    runs-on: ubuntu-latest
+    needs: image-build-and-push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy files to remote server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.prod.yaml,prod.env,migration_prod.Dockerfile,migration_prod.sh,migrations"
+          target: "./auth/"
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: IMAGE_NAME,REGISTRY,GITHUB_SHA,CONTAINER_NAME,REGISTRY_ID
+          script: |
+            cd ./auth/
+            TAG_NAME=${GITHUB_SHA::7}
+
+            # Create network if not exists
+            NETWORK_NAME="auth-net"
+            docker network inspect "$NETWORK_NAME" >/dev/null 2>&1 || docker network create --driver bridge --attachable "$NETWORK_NAME"
+
+            # Update image tag in docker-compose.prod.yaml
+            sed -i "s|image:.*${IMAGE_NAME}:.*|image: ${REGISTRY}/${REGISTRY_ID}/${IMAGE_NAME}:${TAG_NAME}|g" docker-compose.prod.yaml
+
+            # Deploy stack
+            docker compose -f docker-compose.prod.yaml down
+            docker compose --env-file prod.env -f docker-compose.prod.yaml up -d --build

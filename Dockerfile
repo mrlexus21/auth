@@ -1,15 +1,15 @@
 FROM golang:1.25.5-alpine AS builder
 
-COPY . /github.com/mrlexus21/auth/source/
-WORKDIR /github.com/mrlexus21/auth/source/
+WORKDIR /app
+COPY . .
 
-RUN go mod download
-RUN go build -o ./bin/auth_server cmd/server/main.go
+RUN go mod download && \
+    go build -o /app/bin/auth_server ./cmd/server/main.go
 
-FROM alpine:latest
+FROM scratch
 
 WORKDIR /root/
-COPY --from=builder /github.com/mrlexus21/auth/source/bin/auth_server .
-COPY --from=builder /github.com/mrlexus21/auth/source/env .
+COPY --from=builder /app/bin/auth_server .
+COPY --from=builder /app/env .
 
 CMD ["./auth_server", "-config-path", ".env"]
