@@ -1,0 +1,40 @@
+volumes:
+  postgres_volume_prod:
+
+services:
+  pg:
+    image: postgres:14-alpine3.17
+    env_file:
+      - "prod.env"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_volume_prod:/var/lib/postgresql/data
+    networks:
+      - "auth-net"
+
+  migrator:
+    build:
+      context: .
+      dockerfile: migration_prod.Dockerfile
+    restart: on-failure
+    environment:
+      DB_HOST: pg
+    networks:
+      - "auth-net"
+
+  auth_server:
+    image: ${REGISTRY}/${IMAGE_NAME}:${TAG_NAME}
+    ports:
+      - "${GRPC_PORT:-50052}:50052"
+    networks:
+      - "auth-net"
+    depends_on:
+      - pg
+      - migrator
+    env_file:
+      - "prod.env"
+
+networks:
+  auth-net:
+    external: true
