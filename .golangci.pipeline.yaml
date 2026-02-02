@@ -1,6 +1,4 @@
 # More info on config here: https://golangci-lint.run/usage/configuration/#config-file
-version: 2
-
 run:
   concurrency: 8
   timeout: 10m
@@ -18,11 +16,17 @@ run:
       - .cache
 
 output:
-  format: colored-line-number
+  formats: colored-line-number  # Исправлено: format, а не formats
   print-issued-lines: true
   print-linter-name: true
 
 linters-settings:
+  revive:
+    rules:
+      - name: package-comments
+        disabled: true
+      - name: exported
+        disabled: true
   govet:
     shadow: true
   dupl:
@@ -30,17 +34,33 @@ linters-settings:
   goconst:
     min-len: 2
     min-occurrences: 2
+  goimports:
+    local-prefixes: github.com/mrlexus21/chat-server
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/mrlexus21/chat-server)
 
 linters:
   disable-all: true
   enable:
     - errcheck
     - goconst
+    - gofmt
+    - goimports  # Исправляет импорты
+    - gci        # Группирует импорты
     - gosec
     - govet
     - ineffassign
     - revive
+    - typecheck
     - unused
+    - misspell   # Исправляет опечатки
+    - nolintlint # Проверяет корректность //nolint
+    - prealloc   # Оптимизирует предварительное выделение памяти
+    - unconvert  # Удаляет ненужные преобразования типов
+    - whitespace # Исправляет пробелы
 
 issues:
   exclude-use-default: false

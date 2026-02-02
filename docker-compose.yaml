@@ -15,6 +15,7 @@ services:
     build:
       context: .
       dockerfile: migration.Dockerfile
+      no_cache: true
     restart: on-failure
     environment:
      DB_HOST: pg

@@ -1,5 +1,3 @@
-// Package main реализует клиентскую часть приложения для взаимодействия с сервером аутентификации.
-// Включает функции для отправки запросов и обработки ответов от сервера.
 package main
 
 import (
@@ -10,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/mrlexus21/auth/internal/config"
-	user_v1 "github.com/mrlexus21/auth/pkg/user/v1"
+	desc "github.com/mrlexus21/auth/pkg/user/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -47,12 +45,12 @@ func main() {
 		}
 	}(conn)
 
-	c := user_v1.NewUserV1Client(conn)
+	c := desc.NewUserV1Client(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	r, err := c.Get(ctx, &user_v1.GetRequest{Id: userID})
+	r, err := c.Get(ctx, &desc.GetRequest{Id: userID})
 	if err != nil {
 		log.Fatalf("Failed to get user by id: %v", err)
 	}
